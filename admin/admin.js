@@ -66,7 +66,13 @@ function fmtD(ts){ if(!ts)return "—"; const d=new Date(ts); return `${d.getMon
 // ---- AI 拆计划（DeepSeek） ----
 window.AI = {
   async generatePlan(goalId){
-    const goal = (await sb.from("goals").select("*").eq("id",goalId).single()).data;
+  if(!C.DEEPSEEK_KEY){
+    showModal(`<h3>🤖 AI 拆计划暂未启用</h3>
+      <p class="center" style="color:var(--text2);font-size:14px">管理员端尚未配置 AI 密钥。你可以用「手动安排」来给这个目标创建本周计划。</p>
+      <div class="mbtns"><button class="btn" onclick="closeModal();AI.manualPlan('${goalId}')">去手动安排</button></div>`);
+    return;
+  }
+  const goal = (await sb.from("goals").select("*").eq("id",goalId).single()).data;
     if(!goal) return;
     const title = prompt("这一阶段计划的名字（可默认）：", "阶段目标："+goal.title) || ("阶段目标："+goal.title);
     const days = parseInt(prompt("这周安排到哪几天？比如：读书 1234567（表示周一到周日都要做）。可留空默认「每天」", "") || "1234567");
