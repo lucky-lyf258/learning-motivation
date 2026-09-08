@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
+<title>学习激励 · 管理员端</title>
+<style>
+:root{--accent:#34c759;--bg:#f5f5f7;--card:#fff;--border:#e5e5ea;--text:#1c1c1e;--text2:#6b6b70;--text3:#aeaeb2;--radius:14px;--red:#ff3b30;--orange:#ff9500}
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Microsoft YaHei",sans-serif;background:var(--bg);color:var(--text);padding:20px;max-width:860px;margin:0 auto}
+h1{font-size:22px;margin-bottom:4px}
+.sub{font-size:13px;color:var(--text2);margin-bottom:16px}
+.card{background:var(--card);border-radius:var(--radius);padding:18px;margin:12px 0;box-shadow:0 1px 3px rgba(0,0,0,.05)}
+.card h3{font-size:16px;margin-bottom:10px;display:flex;align-items:center;gap:8px}
+.badge{font-size:11px;padding:2px 8px;border-radius:6px;background:#e5f8e9;color:#1f9d4b;font-weight:600}
+.badge.warn{background:#fff1e0;color:#e07f00}
+.badge.grey{background:#f2f2f7;color:var(--text3)}
+.row{display:flex;gap:10px;align-items:flex-start;padding:12px 0;border-bottom:1px solid var(--border)}
+.row:last-child{border-bottom:none}
+.row .info{flex:1}
+.row .name{font-weight:600;font-size:15px}
+.row .meta{font-size:12px;color:var(--text3);margin-top:3px}
+.row .act{display:flex;flex-direction:column;gap:6px;align-items:flex-end}
+.center{text-align:center;color:var(--text3);font-size:13px;padding:18px 0}
+.btn{display:inline-block;padding:8px 16px;border-radius:10px;background:var(--accent);color:#fff;font-weight:600;font-size:14px;cursor:pointer;border:none;text-align:center}
+.btn.ghost{background:#fff;color:var(--text2);border:1px solid var(--border)}
+.btn.warn{background:#fff1e0;color:#e07f00}
+.btn.grey{background:#f2f2f7;color:var(--text2)}
+.btn.red{background:#ffecec;color:#ff3b30}
+.btn:disabled{opacity:.5;cursor:not-allowed}
+.field{margin:10px 0}
+.field label{display:block;font-size:12px;color:var(--text2);margin-bottom:4px;font-weight:600}
+.field input,.field textarea,.field select{width:100%;padding:10px 12px;border:1.5px solid var(--border);border-radius:10px;font-size:14px;background:#fafafa}
+.field textarea{min-height:60px;resize:vertical}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.tag{display:inline-block;font-size:11px;padding:2px 8px;border-radius:6px;font-weight:600}
+.tag.pend{background:#fff;border:1px solid var(--border);color:var(--text3)}
+.tag.planned{background:#e5f8e9;color:#1f9d4b}
+.tag.active{background:#e5f1fb;color:#0a66c2}
+.tag.done{background:#f2f2f7;color:var(--text3)}
+.topbar{display:flex;justify-content:space-between;align-items:center;margin-bottom:14px}
+.logout{color:var(--red);cursor:pointer;font-size:13px}
+.tabs{display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap}
+.tabs .t{padding:8px 16px;border-radius:20px;background:#fff;border:1px solid var(--border);cursor:pointer;font-size:14px;color:var(--text2)}
+.tabs .t.on{background:var(--accent);color:#fff;border-color:var(--accent);font-weight:600}
+.sec{display:none}
+.sec.on{display:block}
+.modal-bg{position:fixed;inset:0;z-index:90;background:rgba(0,0,0,.4);display:none;align-items:flex-end;justify-content:center}
+.modal-bg.on{display:flex}
+.modal{background:#fff;width:100%;max-width:560px;border-radius:16px 16px 0 0;padding:20px;max-height:88vh;overflow-y:auto}
+.modal h3{margin-bottom:12px}
+@media(min-width:600px){.modal{max-width:560px;border-radius:16px;margin-bottom:30px}}
+.stat{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:6px}
+.stat .s{flex:1;min-width:120px;background:#fafafa;border-radius:12px;padding:12px;text-align:center}
+.stat .s b{display:block;font-size:20px}
+.stat .s small{color:var(--text3);font-size:11px}
+.loading{text-align:center;color:var(--text2);padding:24px}
+.ai-dots span{display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--accent);margin:0 2px;animation:blink 1.2s infinite}
+.ai-dots span:nth-child(2){animation-delay:.2s}.ai-dots span:nth-child(3){animation-delay:.4s}
+@keyframes blink{0%,80%,100%{opacity:.2}40%{opacity:1}}
+.task-mini{display:flex;gap:8px;padding:8px 0;border-bottom:1px dashed var(--border);align-items:center;font-size:14px}
+.task-mini:last-child{border:none}
+.task-mini .pt{margin-left:auto;font-weight:700;font-size:12px}
+.task-mini.basic .pt{color:#1f9d4b}.task-mini.bonus .pt{color:#e07f00}
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div><h1>🧑‍💼 管理员端</h1><div class="sub" id="adminGreet">家长管理台</div></div>
+  <div class="sub" id="adminEmail" style="margin:0"></div>
+</div>
+<button class="logout" id="logoutBtn" style="margin-left:auto;display:block;margin-bottom:10px">退出登录</button>
+
+<div class="tabs">
+  <div class="t on" data-sec="pendingGoals">待拆计划</div>
+  <div class="t" data-sec="plans">计划管理</div>
+  <div class="t" data-sec="rewards">奖励商城</div>
+  <div class="t" data-sec="finance">记账看板</div>
+  <div class="t" data-sec="pet">孩子概况</div>
+</div>
+
+<!-- 待拆计划 -->
+<div class="sec on" id="sec-pendingGoals">
+  <div id="pendingGoalList"></div>
+</div>
+
+<!-- 计划管理 -->
+<div class="sec" id="sec-plans">
+  <div id="planList"></div>
+</div>
+
+<!-- 奖励商城 -->
+<div class="sec" id="sec-rewards">
+  <div class="card">
+    <div style="display:flex;justify-content:space-between;align-items:center">
+      <h3 style="margin:0">🎁 设置奖励</h3>
+      <button class="btn" id="addReward">+ 新增奖励</button>
+    </div>
+    <div id="rewardList" style="margin-top:10px"></div>
+  </div>
+  <div class="card">
+    <h3>🙋 兑换申请（待处理）</h3>
+    <div id="redemptionList"></div>
+  </div>
+</div>
+
+<!-- 记账看板 -->
+<div class="sec" id="sec-finance">
+  <div id="finBoard"></div>
+</div>
+
+<!-- 孩子概况 -->
+<div class="sec" id="sec-pet">
+  <div id="kidOverview"></div>
+</div>
+
+<script src="../lib/supabase.js"></script>
+<script src="../config.js"></script>
+<script src="../common.js"></script>
+<script src="admin.js"></script>
+</body>
+</html>
