@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<title>学习激励</title>
+<link rel="manifest" href="../manifest.webmanifest">
+<link rel="apple-touch-icon" href="../assets/icon-192.png">
+<style>
+:root{
+  --accent:#34c759; --accent2:#30b0c7;
+  --bg:#f5f5f7; --card:#fff; --border:#e5e5ea;
+  --text:#1c1c1e; --text2:#6b6b70; --text3:#aeaeb2;
+  --radius:18px; --nav-h:64px; --badge-h:48px;
+  --cl-basic:#34c759; --cl-bonus:#ff9500;
+}
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{height:100%}
+body{font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Microsoft YaHei",sans-serif;background:var(--bg);color:var(--text);padding-bottom:calc(var(--nav-h) + var(--badge-h) + env(safe-area-inset-bottom));}
+input,select,textarea{font-family:inherit;font-size:16px;}
+button{font-family:inherit;cursor:pointer;border:none;background:none}
+
+/* 通用容器 */
+.page{display:none;padding:14px 16px calc(var(--nav-h) + var(--badge-h) + 24px);animation:fade .25s}
+.page.on{display:block}
+@keyframes fade{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+
+.head{display:flex;align-items:center;justify-content:space-between;padding:18px 16px 6px;}
+.head h1{font-size:24px;font-weight:800}
+.head .sub{font-size:12px;color:var(--text3)}
+
+/* 卡片 */
+.card{background:var(--card);border-radius:var(--radius);padding:16px;margin:10px 0;box-shadow:0 1px 3px rgba(0,0,0,.04);}
+
+/* 宠物 */
+.pet-stage{text-align:center;padding:26px 16px}
+.pet-emoji{font-size:88px;line-height:1.1;animation:bob 3s ease-in-out infinite}
+@keyframes bob{0%,100%{transform:translateY(0)}50%{transform:translateY(-10px)}}
+.pet-name{font-size:15px;color:var(--text2);margin-top:6px}
+.pet-bar{height:10px;background:#eee;border-radius:99px;margin:14px 26px;overflow:hidden}
+.pet-bar i{display:block;height:100%;background:linear-gradient(90deg,var(--accent),var(--accent2));width:0%;transition:width .5s;border-radius:99px}
+
+/* 分数展示 */
+.score-chip{display:inline-flex;align-items:center;gap:6px;background:#eaf7ec;color:var(--accent);font-weight:700;padding:6px 14px;border-radius:99px;font-size:14px}
+
+/* 计划 */
+.task{display:flex;align-items:center;gap:12px;padding:13px 4px;border-bottom:1px solid var(--border)}
+.task:last-child{border-bottom:none}
+.task .box{width:26px;height:26px;border-radius:8px;border:2px solid var(--border);flex:none;display:flex;align-items:center;justify-content:center;font-size:14px;color:#fff;transition:.2s}
+.task.done .box{background:var(--accent);border-color:var(--accent)}
+.task .body{flex:1}
+.task .body .t{font-size:15px;font-weight:600}
+.task .body .s{font-size:12px;color:var(--text3);margin-top:2px}
+.task .pts{font-size:13px;font-weight:700}
+.task.basic .pts{color:var(--cl-basic)}
+.task.bonus .pts{color:var(--cl-bonus)}
+
+/* tags */
+.tag{display:inline-block;font-size:11px;padding:2px 8px;border-radius:6px;font-weight:600}
+.tag.basic{background:#e5f8e9;color:#1f9d4b}
+.tag.bonus{background:#fff1e0;color:#e07f00}
+.tag.pend{background:#fff;border:1px solid var(--border);color:var(--text3)}
+
+/* 底部导航 */
+.nav{position:fixed;bottom:var(--badge-h);left:50%;transform:translateX(-50%);width:100%;max-width:480px;height:var(--nav-h);background:rgba(255,255,255,.92);backdrop-filter:blur(14px);border-top:1px solid var(--border);display:flex;z-index:40;padding-bottom:env(safe-area-inset-bottom);border-radius:18px 18px 0 0;box-shadow:0 -4px 16px rgba(0,0,0,.05)}
+.nav .n{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;font-size:10px;color:var(--text3);font-weight:500}
+.nav .n.on{color:var(--accent);font-weight:700}
+
+/* 记账 */
+.frow{display:flex;gap:10px}
+.frow .field{flex:1}
+.budget-nums{display:flex;gap:8px;text-align:center;margin-top:6px}
+.budget-nums >div{flex:1;background:#fafafa;border-radius:14px;padding:10px 4px}
+.budget-nums b{display:block;font-size:18px}
+.budget-nums small{color:var(--text3);font-size:11px}
+.cat-tag{display:inline-flex;flex-direction:column;align-items:center;gap:6px;padding:10px 14px;border-radius:16px;background:#fafafa;font-size:13px;cursor:pointer;flex:1;border:2px solid transparent}
+.cat-tag.on{border-color:var(--accent);background:#eaf7ec;font-weight:700}
+.over{cursor:pointer}
+.over.limit{background:#ffecec}
+.over.limit b{color:#ff3b30}
+
+/* 底部按钮 */
+.btn{display:block;width:100%;text-align:center;padding:14px;border-radius:14px;background:var(--accent);color:#fff;font-weight:700;font-size:16px;margin-top:14px}
+.btn.ghost{background:#fff;color:var(--text2);border:1px solid var(--border)}
+.btn.grey{background:#f2f2f7;color:var(--text2)}
+.btn.small{display:inline-block;width:auto;padding:8px 16px;font-size:14px;margin:6px 4px 0 0}
+.btn.warn{background:#fff1e0;color:#e07f00}
+
+/* 弹窗 */
+.overlay{position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:60;display:flex;align-items:flex-end;justify-content:center;opacity:0;pointer-events:none;transition:.25s}
+.overlay.on{opacity:1;pointer-events:auto}
+.modal{width:100%;max-width:480px;background:#fff;border-radius:20px 20px 0 0;padding:20px 20px calc(26px + env(safe-area-inset-bottom));transform:translateY(40px);transition:.25s;max-height:85vh;overflow-y:auto}
+.overlay.on .modal{transform:none}
+.modal h3{font-size:18px;margin-bottom:12px}
+.field{margin:12px 0}
+.field label{display:block;font-size:12px;color:var(--text2);margin-bottom:5px;font-weight:600}
+.field input,.field select,.field textarea{width:100%;padding:11px 12px;border:1.5px solid var(--border);border-radius:12px;font-size:15px;background:#fafafa}
+.field textarea{min-height:70px;resize:vertical}
+.seg{display:flex;gap:6px}
+.seg .opt{flex:1;text-align:center;padding:10px;border-radius:10px;background:#f2f2f7;font-size:14px;cursor:pointer}
+.seg .opt.on{background:var(--accent);color:#fff;font-weight:700}
+.modal .mbtns{display:flex;gap:10px;margin-top:16px}
+.modal .mbtns .btn{margin:0}
+</style>
+</head>
+<body>
+
+<div class="head">
+  <div>
+    <h1 id="greet">嗨，你好</h1>
+    <div class="sub" id="subline">今天也要加油哦</div>
+  </div>
+  <div class="score-chip" id="scoreChip">⭐ 0</div>
+</div>
+
+<!-- ======= 首页：宠物 + 今日计划 ======= -->
+<div class="page on" id="pg-home">
+  <div class="card pet-stage" id="petCard">
+    <div class="pet-emoji" id="petEmoji">🥚</div>
+    <div class="pet-name" id="petName">宠物蛋（还未破壳）</div>
+    <div class="pet-bar"><i id="petBar"></i></div>
+  </div>
+
+  <div class="card">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+      <b style="font-size:16px">📋 今日计划</b>
+      <span id="planTag" class="tag pend">暂无计划</span>
+    </div>
+    <div id="tasksList">
+      <p style="color:var(--text3);font-size:14px;text-align:center;padding:18px 0">还没有计划，提交一个学习目标，管理员会为你拆成可执行的周计划。</p>
+    </div>
+  </div>
+</div>
+
+<!-- ======= 记账 ======= -->
+<div class="page" id="pg-fin">
+  <div class="card">
+    <div style="display:flex;justify-content:space-between;align-items:center">
+      <b style="font-size:16px">💸 本月生活费</b>
+      <button class="btn small ghost" id="addMoneyBtn">+ 加钱</button>
+    </div>
+    <div class="budget-nums">
+      <div><b id="bTotal">¥0</b><small>总收入</small></div>
+      <div><b id="bSpent">¥0</b><small>已花</small></div>
+      <div><b id="bLeft">¥0</b><small>结余</small></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <b style="font-size:16px">🎯 分类额度</b>
+    <div id="catList" style="display:flex;gap:8px;margin-top:12px"></div>
+  </div>
+
+  <div class="card">
+    <div style="display:flex;justify-content:space-between;align-items:center">
+      <b style="font-size:16px">💰 每一笔</b>
+      <button class="btn small ghost" id="addExpBtn">+ 记一笔</button>
+    </div>
+    <div id="expList" style="margin-top:8px"></div>
+  </div>
+</div>
+
+<!-- ======= 商城 ======= -->
+<div class="page" id="pg-shop">
+  <div class="card">
+    <div style="display:flex;justify-content:space-between;align-items:center">
+      <b style="font-size:16px">🎁 奖励商城</b>
+      <button class="btn small warn" id="wantBtn">想要啥？</button>
+    </div>
+    <p style="font-size:12px;color:var(--text3);margin-top:4px">攒够分数，兑换你想要的奖励！</p>
+  </div>
+  <div id="rewardList"></div>
+  <div class="card">
+    <b style="font-size:16px">📦 我的兑换</b>
+    <div id="myRedempt"></div>
+  </div>
+</div>
+
+<!-- ======= 我的目标 ======= -->
+<div class="page" id="pg-goal">
+  <div class="card">
+    <b style="font-size:16px">🎯 我想学</b>
+    <p style="font-size:13px;color:var(--text2);margin:6px 0 10px">告诉我们你想学什么，管理员会帮你拆成每周执行计划。</p>
+    <div class="field"><input id="goalInput" placeholder="比如：读完《三体》、背英语单词、练字…"></div>
+    <button class="btn" id="submitGoal">提交我想学的</button>
+  </div>
+  <div class="card">
+    <b style="font-size:16px">📜 我的目标</b>
+    <div id="goalList"></div>
+  </div>
+</div>
+
+<!-- 底部导航 -->
+<div class="nav">
+  <div class="n on" data-pg="home"><span style="font-size:20px">🐾</span>主页</div>
+  <div class="n" data-pg="fin"><span style="font-size:20px">💰</span>记账</div>
+  <div class="n" data-pg="shop"><span style="font-size:20px">🎁</span>商城</div>
+  <div class="n" data-pg="goal"><span style="font-size:20px">🎯</span>目标</div>
+</div>
+
+<!-- 弹窗容器 -->
+<div style="display:none"></div>
+
+<script src="../lib/supabase.js"></script>
+<script src="../config.js"></script>
+<script src="../common.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
