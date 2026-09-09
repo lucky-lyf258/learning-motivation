@@ -219,12 +219,24 @@ async function loadRewards(){
     <div class="row">
       <div class="info"><div class="name">${esc(r.title)}</div>
         <div class="meta">需要 <b>${r.cost}</b> ⭐ · ${r.status==='active'?'上架中':'已下架'}</div></div>
-      <div class="act">
+      <div class="act" style="flex-direction:row;gap:6px">
+        <button class="btn ghost" onclick="AI.editReward('${r.id}',${r.cost})">改价</button>
         <button class="btn ghost" onclick="AI.toggleReward('${r.id}','${r.status}')">${r.status==='active'?'下架':'上架'}</button>
       </div>
     </div>`).join("")||`<div class="center">还没有奖励，点「新增奖励」设置一个。</div>`;
 }
 window.AI.toggleReward=async(id,st)=>{ await sb.from("rewards").update({status:st==='active'?'inactive':'active'}).eq("id",id); await loadRewards(); };
+window.AI.editReward=function(id,costNow){
+  showModal(`<h3>✏️ 修改价格</h3>
+    <div class="field"><label>需要多少 ⭐ 才能兑换</label><input id="mCost" type="number" value="${costNow}" min="0" placeholder="如 30"></div>
+    <div class="grid2"><div><button class="btn ghost" id="mCancel" style="width:100%">取消</button></div><div><button class="btn" id="mOk" style="width:100%">保存</button></div></div>`);
+  $("#mOk").onclick=async()=>{
+    const c=+$("#mCost").value; if(!(c>=0)){alert("填个有效的分数");return;}
+    await sb.from("rewards").update({cost:c}).eq("id",id);
+    closeModal(); loadRewards();
+  };
+  $("#mCancel").onclick=closeModal;
+};
 $("#addReward").onclick=()=>{
   showModal(`<h3>🎁 新增奖励</h3>
     <div class="field"><label>奖励内容</label><input id="mTitle" placeholder="如：周末去一次游乐场"></div>
