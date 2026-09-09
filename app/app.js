@@ -320,7 +320,13 @@ function bindEvents(){
   $("#addMoneyBtn").onclick=addMoney;
   $("#addExpBtn").onclick=addExpense;
   $("#wantBtn").onclick=wantReward;
-  const lo=$("#logoutBtn"); if(lo) lo.onclick=async()=>{ if(confirm("确定退出登录？")){ await S.signOut(); location.href="../login.html"; } };
+  const lo=$("#logoutBtn"); if(lo) lo.onclick=()=>{
+    showModal(`<h3>🔓 退出登录</h3>
+      <p style="color:var(--text2);font-size:14px;margin:4px 0">确定要退出当前账号吗？</p>
+      <div class="mbtns"><button class="btn ghost" id="mCancel">取消</button><button class="btn" id="mOk">退出</button></div>`);
+    $("#mOk").onclick=async()=>{ closeModal(); await S.signOut(); location.href="../login.html"; };
+    $("#mCancel").onclick=closeModal;
+  };
 }
 
 // 暴露给内联 onclick
