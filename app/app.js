@@ -25,7 +25,7 @@ async function guard(){
   if(!u){ location.href = "../login.html"; return false; }
   const prof = S.profile;
   // 用户端只允许 user 角色；管理员也可查看（调试/代管）
-  await refresh();
+  await refresh().catch(e=>console.warn("refresh:",e));
   bindEvents();
   switchPage("home");
   return true;
@@ -320,14 +320,19 @@ function bindEvents(){
   $("#addMoneyBtn").onclick=addMoney;
   $("#addExpBtn").onclick=addExpense;
   $("#wantBtn").onclick=wantReward;
-  const lo=$("#logoutBtn"); if(lo) lo.onclick=()=>{
-    showModal(`<h3>🔓 退出登录</h3>
-      <p style="color:var(--text2);font-size:14px;margin:4px 0">确定要退出当前账号吗？</p>
-      <div class="mbtns"><button class="btn ghost" id="mCancel">取消</button><button class="btn" id="mOk">退出</button></div>`);
-    $("#mOk").onclick=async()=>{ closeModal(); await S.signOut(); location.href="../login.html"; };
-    $("#mCancel").onclick=closeModal;
-  };
 }
+
+// ---- 退出登录：用事件委托，不依赖初始化流程，保证任何时候都能点 ----
+function doLogout(){
+  showModal(`<h3>🔓 退出登录</h3>
+    <p style="color:var(--text2);font-size:14px;margin:4px 0">确定要退出当前账号吗？</p>
+    <div class="mbtns"><button class="btn ghost" id="mCancel">取消</button><button class="btn" id="mOk">退出</button></div>`);
+  $("#mOk").onclick=async()=>{ closeModal(); await S.signOut(); location.href="../login.html"; };
+  $("#mCancel").onclick=closeModal;
+}
+document.addEventListener("click",function(e){
+  var t=e.target; while(t){ if(t.id==="logoutBtn"){ e.preventDefault(); doLogout(); return; } t=t.parentNode; }
+}, true);
 
 // 暴露给内联 onclick
 window.showCat = n=>alert("「"+n+"」已花 "+(currentMonthExpenses().filter(e=>e.category_name===n).reduce((a,b)=>a+(+b.amount||0),0))+" 元");
