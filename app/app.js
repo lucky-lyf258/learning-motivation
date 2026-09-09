@@ -157,13 +157,11 @@ function renderCats(totalBudget){
     const over = spent > perCat && perCat>0;
     const pct = perCat? Math.min(100, spent/perCat*100):0;
     return `<div class="cat-tag over ${over?'limit':''}" onclick="window.showCat('${esc(c.name)}')">
-      <span style="font-size:20px">${emoji}</span>${esc(c.name)}
-      <div style="font-size:12px;font-weight:${over?'700':'500'};color:${over?'#ff3b30':'var(--text)'}">${spent}/${Math.round(perCat)}</div>
+      <span style="font-size:18px;line-height:1">${emoji}</span>${esc(c.name)}
+      <div style="font-size:12px;font-weight:${over?'700':'500'};color:${over?'#ff3b30':'var(--text)'}">${spent}/${Math.round(perCat)}元</div>
       <div class="pet-bar" style="width:100%;margin:0" ><i style="width:${pct}%"></i></div>
     </div>`;
-  }).join("") + `<div class="cat-tag add" onclick="window.addCat()" style="cursor:pointer">
-      <span style="font-size:18px">＋</span>添加分类
-    </div>`;
+  }).join("");
 }
 // 添加自定义分类
 async function addCategory(){
