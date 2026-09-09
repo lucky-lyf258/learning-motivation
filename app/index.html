@@ -2,7 +2,7 @@
 <html lang="zh-CN">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0, user-scalable=no, viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <title>学习激励</title>
@@ -17,8 +17,8 @@
   --cl-basic:#34c759; --cl-bonus:#ff9500;
 }
 *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
-html,body{height:100%}
-body{font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Microsoft YaHei",sans-serif;background:var(--bg);color:var(--text);padding-bottom:calc(var(--nav-h) + env(safe-area-inset-bottom));}
+html,body{position:fixed;left:0;right:0;top:0;bottom:0;width:100%;height:100%;overflow:auto}
+body{font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Microsoft YaHei",sans-serif;background:var(--bg);color:var(--text);padding-bottom:calc(var(--nav-h) + env(safe-area-inset-bottom));touch-action:manipulation;-webkit-text-size-adjust:100%;text-size-adjust:100%;overscroll-behavior:none;-webkit-overscroll-behavior:none}
 input,select,textarea{font-family:inherit;font-size:16px;}
 button{font-family:inherit;cursor:pointer;border:none;background:none}
 
@@ -206,5 +206,16 @@ button{font-family:inherit;cursor:pointer;border:none;background:none}
 <script src="../config.js"></script>
 <script src="../common.js"></script>
 <script src="app.js"></script>
+<script>
+(function(){
+  // 彻底禁止双指/双击缩放，固定页面大小
+  document.documentElement.style.overflow='hidden';
+  var last=0;
+  document.addEventListener('touchmove',function(e){ if(e.touches.length>1) e.preventDefault(); },{passive:false});
+  document.addEventListener('gesturestart',function(e){e.preventDefault();});
+  document.addEventListener('gesturechange',function(e){e.preventDefault();});
+  document.addEventListener('dblclick',function(e){e.preventDefault();});
+})();
+</script>
 </body>
 </html>
