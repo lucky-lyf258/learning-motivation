@@ -248,29 +248,35 @@ async function loadRedemptions(){
   box.innerHTML = reds.map(r=>`
     <div class="row">
       <div class="info">
-        <div class="name">🎁 ${esc(r.want_desc||"兑换奖励")}${r.cost?` <span class="badge">${r.cost} ⭐</span>`:""}</div>
+        <div class="name">🎁 ${esc(r.want_desc||"兑换奖励")}</div>
         <div class="meta">孩子提交于 ${fmtDT(r.created_at)}</div>
       </div>
       <div class="act" style="flex-direction:row;gap:6px">
-        ${r.cost?`<button class="btn" onclick="AI.approve('${r.id}',${r.cost})">批准扣分</button>`:`<button class="btn" onclick="AI.approve('${r.id}')">批准</button>`}
+        <button class="btn" onclick="AI.approve('${r.id}')">批准</button>
         <button class="btn red" onclick="AI.reject('${r.id}')">拒绝</button>
       </div>
     </div>`).join("");
 }
-window.AI.approve=async(id,cost)=>{
-  if(cost && !confirm(`批准并扣除孩子 ${cost} 分？`))return;
-  const red=(await sb.from("redemptions").select("*").eq("id",id).single()).data;
-  if(!red)return;
-  // 扣分
-  await sb.from("redemptions").update({status:"approved",decided_by:ADMIN_ID,decided_at:new Date().toISOString()}).eq("id",id);
-  if(cost) await sb.from("score_logs").insert({ user_id:red.user_id, amount:-cost, reason:"兑换："+(red.want_desc||""), ref_type:"reward", ref_id:id });
-  alert("已批准");
-  await refresh();
+window.AI.approve=function(id){
+  showModal(`<h3>✅ 批准兑换</h3>
+    <div class="field"><label>这份奖励需要孩子花多少分？填 0 则不扣分</label><input id="mCost" type="number" value="0" min="0" placeholder="例如 50"></div>
+    <div class="grid2"><div><button class="btn ghost" id="mCancel" style="width:100%">取消</button></div><div><button class="btn" id="mOk" style="width:100%">确认批准</button></div></div>`);
+  $("#mOk").onclick=async()=>{
+    const cost=Math.max(0,+$("#mCost").value||0);
+    const red=(await sb.from("redemptions").select("*").eq("id",id).single()).data;
+    if(!red){alert("记录不存在");return;}
+    await sb.from("redemptions").update({status:"approved",decided_at:new Date().toISOString()}).eq("id",id);
+    if(cost) await sb.from("score_logs").insert({ user_id:red.user_id, amount:-cost, reason:"兑换："+(red.want_desc||""), ref_type:"reward", ref_id:id });
+    closeModal();
+    alert(cost?`已批准并扣除 ${cost} 分。`:"已批准。");
+    try{ await loadRedemptions(); }catch(e){ console.warn(e); }
+  };
+  $("#mCancel").onclick=closeModal;
 };
 window.AI.reject=async(id)=>{
-  await sb.from("redemptions").update({status:"rejected",decided_by:ADMIN_ID,decided_at:new Date().toISOString()}).eq("id",id);
+  await sb.from("redemptions").update({status:"rejected",decided_at:new Date().toISOString()}).eq("id",id);
   alert("已拒绝");
-  await loadRedemptions();
+  try{ await loadRedemptions(); }catch(e){ console.warn(e); }
 };
 
 // ---- 记账看板 ----
