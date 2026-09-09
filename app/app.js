@@ -320,6 +320,7 @@ function bindEvents(){
   $("#addMoneyBtn").onclick=addMoney;
   $("#addExpBtn").onclick=addExpense;
   $("#wantBtn").onclick=wantReward;
+  const lo=$("#logoutBtn"); if(lo) lo.onclick=async()=>{ if(confirm("确定退出登录？")){ await S.signOut(); location.href="../login.html"; } };
 }
 
 // 暴露给内联 onclick
