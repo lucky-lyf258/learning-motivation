@@ -240,7 +240,7 @@ async function exchange(id){
   const r = state.rewards.find(x=>x.id===id);
   if(!r) return;
   if(!confirm(`要用 ${r.cost} 分兑换「${r.title}」吗？`)) return;
-  const { error } = await sb.from("redemptions").insert({ reward_id:id, user_id:S.user.id, want_desc:r.title, status:"pending", cost:r.cost });
+  const { error } = await sb.from("redemptions").insert({ reward_id:id, user_id:S.user.id, want_desc:r.title, status:"pending" });
   if(error) alert("失败："+error.message); else alert("已提交兑换申请，等待管理员批准。");
   await refresh();
 }
@@ -251,8 +251,9 @@ function wantReward(){
     <div class="mbtns"><button class="btn ghost" id="mCancel">取消</button><button class="btn" id="mOk">提交</button></div>`);
   $("#mOk").onclick = async ()=>{
     const v=$("#mWant").value.trim(); if(!v){alert("写点内容");return;}
-    await sb.from("redemptions").insert({ user_id:S.user.id, want_desc:v, status:"pending", cost:0 });
-    alert("已提交，管理员会为你评估并设置所需积分。");
+    const { error } = await sb.from("redemptions").insert({ user_id:S.user.id, want_desc:v, status:"pending" });
+    if(error) alert("提交失败："+error.message);
+    else alert("已提交，管理员会为你评估并设置所需积分。");
     closeModal(); await refresh();
   };
   $("#mCancel").onclick = closeModal;
