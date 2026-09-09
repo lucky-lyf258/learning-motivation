@@ -298,10 +298,12 @@ function addExpense(){
 
 // ---- 弹窗工具 ----
 function showModal(html){
-  const ov=document.createElement("div"); ov.className="overlay on"; ov.innerHTML=`<div class="modal">${html}</div>`;
+  const ov=document.createElement("div"); ov.className="overlay on";
+  ov.innerHTML=`<div class="modal"><button class="m-x" id="mX" aria-label="关闭">✕</button>${html}</div>`;
   document.body.appendChild(ov);
   window._ov=ov;
   ov.onclick=e=>{ if(e.target===ov) closeModal(); };
+  const x=ov.querySelector("#mX"); if(x) x.onclick=e=>{e.stopPropagation();closeModal();};
 }
 function closeModal(){ const ov=window._ov; if(ov){ov.classList.remove("on");setTimeout(()=>ov.remove(),200);} window._ov=null; }
 
