@@ -218,14 +218,26 @@ async function loadRewards(){
   box.innerHTML=(data||[]).map(r=>`
     <div class="row">
       <div class="info"><div class="name">${esc(r.title)}</div>
-        <div class="meta">需要 <b>${r.cost}</b> ⭐ · ${r.status==='active'?'上架中':'已下架'}</div></div>
+        <div class="meta">需要 <b>${r.cost}</b> ⭐ · ${r.status==='active'?'上架中':'已下架'} · 库存 <b>${r.stock!=null?r.stock:'—'}</b></div></div>
       <div class="act" style="flex-direction:row;gap:6px">
+        <button class="btn ghost" onclick="AI.editStock('${r.id}',${r.stock!=null?r.stock:999})">数量</button>
         <button class="btn ghost" onclick="AI.editReward('${r.id}',${r.cost})">改价</button>
         <button class="btn ghost" onclick="AI.toggleReward('${r.id}','${r.status}')">${r.status==='active'?'下架':'上架'}</button>
       </div>
     </div>`).join("")||`<div class="center">还没有奖励，点「新增奖励」设置一个。</div>`;
 }
 window.AI.toggleReward=async(id,st)=>{ await sb.from("rewards").update({status:st==='active'?'inactive':'active'}).eq("id",id); await loadRewards(); };
+window.AI.editStock=function(id,stockNow){
+  showModal(`<h3>📦 设置数量</h3>
+    <div class="field"><label>库存数量（0=不能兑换；999=不限）</label><input id="mStock" type="number" value="${stockNow}" min="0" placeholder="如 10"></div>
+    <div class="grid2"><div><button class="btn ghost" id="mCancel" style="width:100%">取消</button></div><div><button class="btn" id="mOk" style="width:100%">保存</button></div></div>`);
+  $("#mOk").onclick=async()=>{
+    const s=+$("#mStock").value; if(!(s>=0)){alert("填个有效的数量");return;}
+    await sb.from("rewards").update({stock:s}).eq("id",id);
+    closeModal(); loadRewards();
+  };
+  $("#mCancel").onclick=closeModal;
+};
 window.AI.editReward=function(id,costNow){
   showModal(`<h3>✏️ 修改价格</h3>
     <div class="field"><label>需要多少 ⭐ 才能兑换</label><input id="mCost" type="number" value="${costNow}" min="0" placeholder="如 30"></div>
@@ -241,12 +253,13 @@ $("#addReward").onclick=()=>{
   showModal(`<h3>🎁 新增奖励</h3>
     <div class="field"><label>奖励内容</label><input id="mTitle" placeholder="如：周末去一次游乐场"></div>
     <div class="field"><label>需要分数（多少 ⭐ 可兑换）</label><input id="mCost" type="number" placeholder="如 50"></div>
+    <div class="field"><label>库存数量（999=不限）</label><input id="mStock" type="number" value="999" min="0"></div>
     <div class="grid2"><div><button class="btn ghost" id="mCancel" style="width:100%">取消</button></div>
     <div><button class="btn" id="mOk" style="width:100%">添加</button></div></div>`);
   $("#mOk").onclick=async()=>{
-    const t=$("#mTitle").value.trim(), c=+$("#mCost").value||0;
+    const t=$("#mTitle").value.trim(), c=+$("#mCost").value||0, s=+$("#mStock").value||999;
     if(!t){alert("填写奖励内容");return;}
-    await sb.from("rewards").insert({title:t,cost:c,status:"active",created_by:ADMIN_ID});
+    await sb.from("rewards").insert({title:t,cost:c,stock:s,status:"active",created_by:ADMIN_ID});
     closeModal(); loadRewards();
   };
   $("#mCancel").onclick=closeModal;
@@ -269,21 +282,12 @@ async function loadRedemptions(){
       </div>
     </div>`).join("");
 }
-window.AI.approve=function(id){
-  showModal(`<h3>✅ 批准兑换</h3>
-    <div class="field"><label>这份奖励需要孩子花多少分？填 0 则不扣分</label><input id="mCost" type="number" value="0" min="0" placeholder="例如 50"></div>
-    <div class="grid2"><div><button class="btn ghost" id="mCancel" style="width:100%">取消</button></div><div><button class="btn" id="mOk" style="width:100%">确认批准</button></div></div>`);
-  $("#mOk").onclick=async()=>{
-    const cost=Math.max(0,+$("#mCost").value||0);
-    const red=(await sb.from("redemptions").select("*").eq("id",id).single()).data;
-    if(!red){alert("记录不存在");return;}
-    await sb.from("redemptions").update({status:"approved",decided_at:new Date().toISOString()}).eq("id",id);
-    if(cost) await sb.from("score_logs").insert({ user_id:red.user_id, amount:-cost, reason:"兑换："+(red.want_desc||""), ref_type:"reward", ref_id:id });
-    closeModal();
-    alert(cost?`已批准并扣除 ${cost} 分。`:"已批准。");
-    try{ await loadRedemptions(); }catch(e){ console.warn(e); }
-  };
-  $("#mCancel").onclick=closeModal;
+window.AI.approve=async function(id){
+  const red=(await sb.from("redemptions").select("*").eq("id",id).single()).data;
+  if(!red){alert("记录不存在");return;}
+  await sb.from("redemptions").update({status:"approved",decided_at:new Date().toISOString()}).eq("id",id);
+  alert("已批准。弟弟现在可在商城点「兑换」来真正扣星。");
+  await loadRedemptions();
 };
 window.AI.reject=async(id)=>{
   await sb.from("redemptions").update({status:"rejected",decided_at:new Date().toISOString()}).eq("id",id);
