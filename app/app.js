@@ -1,5 +1,5 @@
 // ============================================
-// 学习激励系统 · 用户端（弟弟/手机）逻辑
+// 学习激励系统 · 用户端逻辑
 // ============================================
 (function(){
 const C = window.APP, S = window.Shared, sb = S.sb;
@@ -34,20 +34,29 @@ async function guard(){
 // ---- 刷新所有数据 ----
 async function refresh(){
   const uid = S.user.id;
-  const pr = m=>Promise.all(m.map(async t=>{ try{ const {data}=await sb.from(t).select("*").eq("user_id",uid); return {t,d:data||[]}; }catch(e){ return {t,d:[]}; } }));
-
-  const [catR, expR, topR, goalR, planR, petR] = await pr(["categories","expenses","budget_topups","goals","plans","pets"]);
-  state.categories = catR.d;
-  state.expenses = expR.d;
-  state.topups = topR.d;
-  state.goals = goalR.d;
-  state.plans = planR.d;
-  state.pet = petR.d && petR.d[0] ? petR.d[0] : { stage:"egg", total_points:0 };
+  // 并行拉取全部数据，避免串行等待造成卡顿
+  const safe = p => p.then(r=>({data:r.data||null, error:r.error})).catch(()=>({data:null,error:true}));
+  const [catR, expR, topR, goalR, planR, petR, slogsR, rewR, redR] = await Promise.all([
+    safe(sb.from("categories").select("*").eq("user_id",uid)),
+    safe(sb.from("expenses").select("*").eq("user_id",uid)),
+    safe(sb.from("budget_topups").select("*").eq("user_id",uid)),
+    safe(sb.from("goals").select("*").eq("user_id",uid)),
+    safe(sb.from("plans").select("*").eq("user_id",uid)),
+    safe(sb.from("pets").select("*").eq("user_id",uid)),
+    safe(sb.from("score_logs").select("amount").eq("user_id",uid)),
+    safe(sb.from("rewards").select("*").eq("status","active")),
+    safe(sb.from("redemptions").select("*").eq("user_id",uid).order("created_at",{ascending:false})),
+  ]);
+  state.categories = catR.data||[];
+  state.expenses   = expR.data||[];
+  state.topups     = topR.data||[];
+  state.goals      = goalR.data||[];
+  state.plans      = planR.data||[];
+  state.pet = (petR.data && petR.data[0]) ? petR.data[0] : { stage:"egg", total_points:0 };
   if(!state.pet.id) state.pet = null;
-
-  // 分数汇总：所有 + 记录求和
-  const { data: slogs } = await sb.from("score_logs").select("amount").eq("user_id",uid);
-  state.score = (slogs||[]).reduce((a,b)=>a+b.amount,0);
+  state.score = (slogsR.data||[]).reduce((a,b)=>a+b.amount,0);
+  state.rewards = rewR.data||[];
+  state.redemptions = redR.data||[];
 
   // 当前活跃计划的任务
   const activePlan = state.plans.find(p=>p.status==="active");
@@ -56,12 +65,6 @@ async function refresh(){
     state.activePlan = activePlan;
     state.tasks = t||[];
   } else { state.activePlan = null; state.tasks = []; }
-
-  // 商城奖励 + 我的兑换
-  const { data: rew } = await sb.from("rewards").select("*").eq("status","active");
-  state.rewards = rew||[];
-  const { data: red } = await sb.from("redemptions").select("*").eq("user_id",uid).order("created_at",{ascending:false});
-  state.redemptions = red||[];
 
   render();
 }
@@ -194,34 +197,30 @@ function fmtTime(ts){ const d=new Date(ts); return `${d.getMonth()+1}/${d.getDat
 // ---- 商城 ----
 function renderRewards(){
   $("#rewardList").innerHTML = state.rewards.map(r=>{
-    const mine = state.redemptions.filter(x=>x.reward_id===r.id);
-    const last = mine[0] || null; // redemptions 已按时间倒序加载
-    const stockStr = (r.stock!=null && r.stock<999) ? ` · 剩${r.stock}件` : "";
-    let btn;
-    if(!last){ btn=`<button class="btn small" onclick="window.applyReward('${r.id}')">我想要</button>`; }
-    else if(last.status==="pending"){ btn=`<span class="tag pend">审批中</span>`; }
-    else if(last.status==="approved"){ btn=`<button class="btn small" onclick="window.exchange('${r.id}')">兑换 · ${r.cost}⭐</button>`; }
-    else if(last.status==="redeemed"){ btn=`<span class="tag basic">已兑换</span>`; }
-    else { btn=`<button class="btn small" onclick="window.applyReward('${r.id}')">我想要</button>`; }
+    const soldOut = (r.stock!=null && +r.stock<=0);
+    const stockStr = (r.stock!=null && +r.stock<999) ? `剩 ${r.stock} 件` : "库存充足";
+    const btn = soldOut
+      ? `<span class="tag pend">已售罄</span>`
+      : `<button class="btn small" onclick="window.exchange('${r.id}')">兑换 ${r.cost}⭐</button>`;
     return `<div class="card" style="margin:8px 0">
       <div style="display:flex;justify-content:space-between;align-items:center;gap:8px">
-        <div><b>${esc(r.title)}</b>
-          <div style="font-size:12px;color:var(--text3)">${r.cost} ⭐${stockStr}</div></div>
+        <div style="flex:1;min-width:0"><b>${esc(r.title)}</b>
+          <div style="font-size:12px;color:var(--text3);margin-top:2px">${r.cost} ⭐ · ${stockStr}</div></div>
         <div>${btn}</div>
       </div>
     </div>`;
-  }).join("") || `<p style="color:var(--text3);font-size:13px;text-align:center;padding:14px 0">商城还在准备中～</p>`;
+  }).join("") || `<p style="color:var(--text3);font-size:13px;text-align:center;padding:14px 0">商城还没上架商品，去「想要啥」申请你想要的吧～</p>`;
   renderMyRedempt();
 }
 function renderMyRedempt(){
-  const s = {pending:"审批中",approved:"已通过·待兑换",redeemed:"已兑换",rejected:"已拒绝"};
+  const s = {pending:"审批中",approved:"已上架·可兑换",redeemed:"已兑换",rejected:"已拒绝"};
   $("#myRedempt").innerHTML = state.redemptions.length===0?
-    `<p style="color:var(--text3);font-size:13px;text-align:center;padding:14px 0">还没有兑换记录</p>` :
+    `<p style="color:var(--text3);font-size:13px;text-align:center;padding:14px 0">还没有记录</p>` :
     state.redemptions.map(r=>`
       <div class="task" style="cursor:default">
-        <div class="body"><div class="t">${esc(r.want_desc||("兑换："+(state.rewards.find(x=>x.id===r.reward_id)?.title||"")))}</div>
+        <div class="body"><div class="t">${esc(r.want_desc||"奖励")}</div>
         <div class="s">${s[r.status]||r.status}</div></div>
-        <div class="pts" style="color:var(--text3)">${r.status==="redeemed"?'✓':('-'+r.cost+'⭐')}</div>
+        <div class="pts" style="color:var(--text3)">${r.status==="redeemed"?'✓':''}</div>
       </div>`).join("");
 }
 
@@ -246,25 +245,10 @@ async function submitGoal(){
   $("#goalInput").value="";
   await refresh();
 }
-// ---- 申请：我想要（不扣星，等管理员批准） ----
-async function applyReward(id){
-  const r = state.rewards.find(x=>x.id===id); if(!r) return;
-  showModal(`<h3>🎁 想要「${esc(r.title)}」</h3>
-    <p style="color:var(--text2);font-size:14px;margin:4px 0">这个奖励需要 <b>${r.cost} ⭐</b>。先提交申请，管理员批准后你就能兑换（兑换时才扣星星）。</p>
-    <div class="mbtns"><button class="btn ghost" id="mCancel">取消</button><button class="btn" id="mOk">提交想要</button></div>`);
-  $("#mOk").onclick=async()=>{
-    const { error } = await sb.from("redemptions").insert({ reward_id:id, user_id:S.user.id, want_desc:r.title, status:"pending" });
-    if(error) alert("提交失败："+error.message); else alert("已提交申请，等管理员批准。");
-    closeModal(); await refresh();
-  };
-  $("#mCancel").onclick=closeModal;
-}
-// ---- 兑换：仅在管理员批准后可兑换，此时才扣星、减库存 ----
+// ---- 兑换：直接购买，扣星 + 减库存 ----
 async function exchange(id){
   const r = state.rewards.find(x=>x.id===id); if(!r) return;
-  const red = state.redemptions.find(x=>x.reward_id===id && x.status==="approved");
-  if(!red){ alert("需先提交『我想要』并等管理员批准，才能兑换。"); return; }
-  if(r.stock!=null && r.stock<=0){ alert("该奖励库存不足了。"); return; }
+  if(r.stock!=null && +r.stock<=0){ alert("该商品已售罄了。"); return; }
   if(state.score < r.cost){ alert("星星不够哦，再攒一攒～"); return; }
   showModal(`<h3>💫 兑换「${esc(r.title)}」</h3>
     <p style="color:var(--text2);font-size:14px;margin:4px 0">将扣除 <b>${r.cost} ⭐</b>，确认兑换吗？</p>
@@ -272,23 +256,23 @@ async function exchange(id){
   $("#mOk").onclick=async()=>{
     const { error: er } = await sb.from("score_logs").insert({ user_id:S.user.id, amount:-r.cost, reason:"兑换："+r.title, ref_type:"reward", ref_id:r.id });
     if(er){ alert("兑换失败："+er.message); return; }
-    await sb.from("redemptions").update({ status:"redeemed", decided_at:new Date().toISOString() }).eq("id",red.id);
+    const { error: er2 } = await sb.from("redemptions").insert({ reward_id:r.id, user_id:S.user.id, want_desc:r.title, status:"redeemed", decided_at:new Date().toISOString() });
     if(r.stock!=null) await sb.from("rewards").update({ stock:(+r.stock||0)-1 }).eq("id",r.id);
     closeModal(); alert("兑换成功！"); await refresh();
   };
   $("#mCancel").onclick=closeModal;
 }
-window.applyReward = applyReward;
-// ---- 我想要 ----
+// ---- 我想要：申请商城没有的新东西，管理员批准后上架 ----
 function wantReward(){
-  showModal(`<h3>🎁 我想要这个奖励</h3>
+  showModal(`<h3>🎁 我想要</h3>
+    <p style="color:var(--text2);font-size:13px;margin:2px 0 8px">商城没有你想要的东西？写下来，管理员看到后会帮你上架。</p>
     <div class="field"><label>想要什么？</label><input id="mWant" placeholder="比如：去一次游乐场、买个盲盒…"></div>
     <div class="mbtns"><button class="btn ghost" id="mCancel">取消</button><button class="btn" id="mOk">提交</button></div>`);
   $("#mOk").onclick = async ()=>{
     const v=$("#mWant").value.trim(); if(!v){alert("写点内容");return;}
     const { error } = await sb.from("redemptions").insert({ user_id:S.user.id, want_desc:v, status:"pending" });
     if(error) alert("提交失败："+error.message);
-    else alert("已提交，管理员会为你评估并设置所需积分。");
+    else alert("已提交，管理员看到后会帮你上架。");
     closeModal(); await refresh();
   };
   $("#mCancel").onclick = closeModal;
