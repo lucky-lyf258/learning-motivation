@@ -1,13 +1,13 @@
 // ============================================
 // 学习激励系统 · 管理员端逻辑
-// 职责：待拆计划→AI拆计划→推给弟弟；管奖励/批兑换；看记账看板
+// 职责：待拆计划→AI拆计划→推给用户；管商城商品/审批；看记账看板
 // ============================================
 (function(){
 const C = window.APP, S = window.Shared, sb = S.sb;
 const $ = s=>document.querySelector(s);
 
 const ADMIN_ID = "admin-local";   // 内置管理员的审计标识（本地登录，无 Supabase 用户）
-let targetKidId = null;           // 当前孩子的 user_id
+let targetKidId = null;           // 当前用户的 user_id
 
 async function guard(){
   // 管理员为内置账号，通过本地会话校验（login.html 写入 sessionStorage.lm_admin）
@@ -27,7 +27,7 @@ async function refresh(){
   await Promise.all([loadKids(), loadPendingGoals(), loadPlans(), loadRewards(), loadRedemptions(), loadFinance()]);
   loadKidOverview();
 }
-// 找到孩子的账号（user 角色）
+// 找到用户的账号（user 角色）
 async function loadKids(){
   const { data } = await sb.from("profiles").select("*").eq("role", C.ROLE_USER);
   const kids = data||[];
@@ -42,7 +42,7 @@ async function loadPendingGoals(){
   const goals = data||[];
   const box = $("#pendingGoalList");
   if(goals.length===0){
-    box.innerHTML = `<div class="card center">暂无待拆的学习目标。弟弟在「目标」页提交后，会显示在这里。</div>`;
+    box.innerHTML = `<div class="card center">暂无待拆的学习目标。用户在「计划」页提交后，会显示在这里。</div>`;
     return;
   }
   box.innerHTML = goals.map(g=>`
@@ -81,7 +81,7 @@ window.AI = {
       <div class="loading"><span class="ai-dots"><span></span><span></span><span></span></span> 正在为「${esc(goal.title)}」安排本周计划</div>
       <div style="max-height:240px;overflow:auto" id="aiDraft"></div>
       <div class="act" style="margin-top:12px;display:none" id="aiDone">
-        <button class="btn" id="aiConfirm">确认并推给弟弟</button>
+        <button class="btn" id="aiConfirm">确认并推给用户</button>
         <button class="btn ghost" id="aiEdit">手动调整</button>
         <button class="btn grey" id="aiCancel">取消</button>
       </div>
@@ -126,7 +126,7 @@ window.AI = {
 };
 
 async function callDeepSeek(goal, days){
-  const promptText = `你是一名帮家长给孩子拆解学习计划的老师。请把孩子的一个学习目标拆成一个"阶段计划"，包含若干个基本项和加分项，用于每天打卡。
+  const promptText = `你是一名帮管理员给用户拆解学习计划的老师。请把用户的一个学习目标拆成一个"阶段计划"，包含若干个基本项和加分项，用于每天打卡。
 目标：${goal.title}
 每行格式：类型|内容
 - 基本项(完成+5分)，最能促进目标达成日常必做的事，例如"读《三体》30页"
@@ -177,7 +177,7 @@ async function savePlan({goal,title,tasks}){
     await sb.from("plans").update({ status:"archived" }).neq("id",plan.id).eq("status","active");
     // 更新目标为 active
     await sb.from("goals").update({ status:"active" }).eq("id",goal.id);
-    alert("✅ 计划已生成并推给弟弟！");
+    alert("✅ 计划已生成并推给用户！");
     await refresh();
   }catch(e){ alert("保存失败："+e.message); }
 }
@@ -274,7 +274,7 @@ async function loadRedemptions(){
     <div class="row">
       <div class="info">
         <div class="name">🎁 ${esc(r.want_desc||"兑换奖励")}</div>
-        <div class="meta">孩子提交于 ${fmtDT(r.created_at)}</div>
+        <div class="meta">用户提交于 ${fmtDT(r.created_at)}</div>
       </div>
       <div class="act" style="flex-direction:row;gap:6px">
         <button class="btn" onclick="AI.approve('${r.id}')">批准</button>
@@ -282,12 +282,24 @@ async function loadRedemptions(){
       </div>
     </div>`).join("");
 }
-window.AI.approve=async function(id){
-  const red=(await sb.from("redemptions").select("*").eq("id",id).single()).data;
-  if(!red){alert("记录不存在");return;}
-  await sb.from("redemptions").update({status:"approved",decided_at:new Date().toISOString()}).eq("id",id);
-  alert("已批准。弟弟现在可在商城点「兑换」来真正扣星。");
-  await loadRedemptions();
+window.AI.approve=function(id){
+  showModal(`<h3>✅ 上架商品</h3>
+    <p style="font-size:13px;color:var(--text2)">用户想要的东西，批准后会上架到商城，用户即可用星星兑换。</p>
+    <div class="field"><label>定价（多少 ⭐ 可兑换）</label><input id="mCost" type="number" value="0" min="0" placeholder="例如 50"></div>
+    <div class="field"><label>库存数量（999=不限）</label><input id="mStock" type="number" value="999" min="0"></div>
+    <div class="grid2"><div><button class="btn ghost" id="mCancel" style="width:100%">取消</button></div><div><button class="btn" id="mOk" style="width:100%">上架</button></div></div>`);
+  $("#mOk").onclick=async()=>{
+    const cost=Math.max(0,+$("#mCost").value||0);
+    const stock=Math.max(0,+$("#mStock").value||999);
+    const red=(await sb.from("redemptions").select("*").eq("id",id).single()).data;
+    if(!red){alert("记录不存在");return;}
+    await sb.from("rewards").insert({ title:red.want_desc||"奖励", cost, stock, status:"active", created_by:ADMIN_ID });
+    await sb.from("redemptions").update({ status:"approved", decided_at:new Date().toISOString() }).eq("id",id);
+    closeModal();
+    alert("已上架到商城，用户现在可以兑换了。");
+    await loadRedemptions(); await loadRewards();
+  };
+  $("#mCancel").onclick=closeModal;
 };
 window.AI.reject=async(id)=>{
   await sb.from("redemptions").update({status:"rejected",decided_at:new Date().toISOString()}).eq("id",id);
@@ -298,7 +310,7 @@ window.AI.reject=async(id)=>{
 // ---- 记账看板 ----
 async function loadFinance(){
   await loadKids();
-  if(!targetKidId){ $("#finBoard").innerHTML=`<div class="card center">还没有孩子账号。请先用手机/登录页注册一个「用户」账号。</div>`; return; }
+  if(!targetKidId){ $("#finBoard").innerHTML=`<div class="card center">还没有用户账号。请先注册一个「用户」账号。</div>`; return; }
   const uid=targetKidId;
   const [ topR, expR, catR ] = await Promise.all([
     sb.from("budget_topups").select("*").eq("user_id",uid),
@@ -332,10 +344,10 @@ async function loadFinance(){
 }
 function sameMonth(ts){ if(!ts)return true; const d=new Date(ts),n=new Date(); return d.getFullYear()===n.getFullYear()&&d.getMonth()===n.getMonth(); }
 
-// ---- 孩子概况 ----
+// ---- 用户概况 ----
 async function loadKidOverview(){
   await loadKids();
-  if(!targetKidId){ $("#kidOverview").innerHTML=`<div class="card center">暂无孩子账号</div>`; return; }
+  if(!targetKidId){ $("#kidOverview").innerHTML=`<div class="card center">暂无用户账号</div>`; return; }
   const uid=targetKidId;
   const { data: pet }= await sb.from("pets").select("*").eq("user_id",uid).maybeSingle();
   const { data: logs}= await sb.from("score_logs").select("amount").eq("user_id",uid);
@@ -348,7 +360,7 @@ async function loadKidOverview(){
     <div class="card">
       <div style="display:flex;gap:16px;align-items:center">
         <div style="font-size:56px">${m[0]}</div>
-        <div><b style="font-size:17px">孩子的宠物：${m[1]}</b>
+        <div><b style="font-size:17px">用户的宠物：${m[1]}</b>
           <div class="meta">累计喂宠物 ${(pets2&&pets2[0]&&pets2[0].total_points)||0} 分</div></div>
       </div>
       <div style="display:flex;gap:20px;margin-top:14px;font-size:14px">
